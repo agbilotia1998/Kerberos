@@ -65,7 +65,7 @@ def authenticating_server():
 def tgs():
     data = request.headers
     authenticator = data.get('authenticator')
-    tgt = data.get('tgt')
+    encrypted_tgt = data.get('tgt')
 
 
 if __name__ == '__main__':
