@@ -9,6 +9,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 tgs_secret_key = ''
+server_password = 'test_server'
+server_secret_key = hashlib.md5(server_password.encode('utf-8'))
+
 
 class Clients(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -41,7 +44,7 @@ def authenticating_server():
     tgs_secret_key = hashlib.md5(tgs.password.encode('utf-8'))
 
     sk1 = "".join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
-    print("Session key " + sk1)
+    print("Session key 1 " + sk1)
     encryption_obj = AES.new(client_secret_key.hexdigest().encode(), AES.MODE_CBC, client_secret_key.hexdigest()[:16].encode())
     # encrypted_sk1 = encryption_obj.encrypt(sk1)
 
@@ -74,11 +77,32 @@ def tgs():
     sk1 = sk1[:16]
 
     decryption_obj = AES.new(sk1, AES.MODE_CBC, sk1)
-    authenticator = decryption_obj.decrypt(encrypted_authenticator).decode()
-    if tgt.split[' '][0] != authenticator.split[' '][0] or tgt.split[' '][1] != authenticator.split[' '][1]:
+    authenticator = decryption_obj.decrypt(encrypted_authenticator).decode().strip()[1:]
+
+    if (tgt.split(' ')[0] != authenticator.split(' ')[0]) or (tgt.split(' ')[1] != authenticator.split(' ')[1]):
         return make_response('Client not valid, dropping connection', 400)
 
-    return make_response('Verified', 200)
+    sk2 = "".join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
+    print("Session key 2 " + sk2)
+    service_ticket = "".join(str(tgt.split(' ')[0]) + ' ' + str(tgt.split(' ')[1]) + ' ' + str(datetime.now()) + ' ' + sk2)
+
+    encryption_obj = AES.new(server_secret_key.hexdigest().encode(), AES.MODE_CBC,
+                             server_secret_key.hexdigest()[:16].encode())
+    padded_service_ticket = Padding.appendPadding(service_ticket, AES.block_size, mode='CMS')
+    encrypted_service_ticket = encryption_obj.encrypt(padded_service_ticket)
+
+    response = {
+        "sk2": sk2,
+        "service_ticket": base64.b64encode(encrypted_service_ticket).decode()
+    }
+    encryption_obj = AES.new(sk1, AES.MODE_CBC,
+                             sk1)
+    padded_response = Padding.appendPadding(json.dumps(response), AES.block_size, mode='CMS')
+    encrypted_response = encryption_obj.encrypt(padded_response)
+
+    print(response)
+    return make_response({'data': base64.b64encode(encrypted_response).decode()}, 200)
+
 
 
 if __name__ == '__main__':

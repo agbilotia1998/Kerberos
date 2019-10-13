@@ -1,4 +1,4 @@
-import hashlib
+import hashlib, Padding
 import requests, base64
 from flask import json
 from Crypto.Cipher import AES
@@ -22,7 +22,7 @@ class Client:
         self.secret_key = hashlib.md5(self.password.encode('utf-8'))
         print('Client Secret Key ' + str(self.secret_key))
 
-    def request_as(self):
+    def request_kdc(self):
         headers = {'id': str(self.id)}
         response = requests.get(self.kdc_url + '/authenticating_server', headers=headers)
         if response.status_code == 200:
@@ -36,20 +36,29 @@ class Client:
             print(decrypted_data)
             print(sk1)
             print(tgt)
-            authenticator = ''.join(str(self.id) + ' ' + str(self.address) + ' ' + str(datetime.now()) + ' ')
+            authenticator = str(self.id) + ' ' + str(self.address) + ' ' + str(datetime.now())
+            padded_authenticator = Padding.appendPadding(json.dumps(authenticator), AES.block_size, mode='CMS')
             encryption_obj = AES.new(sk1, AES.MODE_CBC, sk1)
-            encrypted_authenticator = encryption_obj.encrypt(authenticator)
+            encrypted_authenticator = encryption_obj.encrypt(padded_authenticator)
 
             tgs_request_parameters = {
                 'authenticator': base64.b64encode(encrypted_authenticator).decode(),
                 'tgt': tgt
             }
             tgs_response = requests.get(url=self.kdc_url + '/tgs', headers=tgs_request_parameters)
+            if tgs_response.status_code == 200:
+                data = json.loads(tgs_response.content)['data']
+                data = base64.b64decode(data)
+                decryption_obj = AES.new(sk1, AES.MODE_CBC, sk1)
+                decrypted_data = decryption_obj.decrypt(data).decode()
+                print(decrypted_data)
 
+            else:
+                print(response.content)
         else:
             print(response.content)
 
 
 if __name__ == '__main__':
     client = Client()
-    client.request_as()
+    client.request_kdc()
