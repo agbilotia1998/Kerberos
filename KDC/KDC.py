@@ -104,7 +104,6 @@ def tgs():
     return make_response({'data': base64.b64encode(encrypted_response).decode()}, 200)
 
 
-
 if __name__ == '__main__':
     db.create_all()
     app.run(port=8080, debug=True)
