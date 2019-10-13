@@ -67,8 +67,10 @@ class Client:
                     'service_ticket': service_ticket
                 }
                 server_response = requests.get(url=self.server_url + '/service', headers=server_request_parameters)
-                print(server_response)
-
+                if server_response.status_code == 200:
+                    print("Secure connection established between the client and server")
+                else:
+                    print(response.content)
             else:
                 print(response.content)
         else:
