@@ -50,6 +50,8 @@ def authenticating_server():
 
     life_span = 1000
     tgt = "".join(str(client_id) + ' ' + str(request.remote_addr) + ' ' + str(life_span) + ' ' + str(datetime.now()) + ' ' + sk1)
+    print("Generating TGT")
+    print(tgt)
     encryption_obj = AES.new(tgs_secret_key.hexdigest().encode(), AES.MODE_CBC, tgs_secret_key.hexdigest()[:16].encode())
     padded_tgt = Padding.appendPadding(tgt, AES.block_size, mode='CMS')
     encrypted_tgt = encryption_obj.encrypt(padded_tgt)
@@ -85,6 +87,8 @@ def tgs():
     sk2 = "".join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(16))
     print("Session key 2 " + sk2)
     service_ticket = "".join(str(tgt.split(' ')[0]) + ' ' + str(tgt.split(' ')[1]) + ' ' + str(datetime.now()) + ' ' + sk2)
+    print("Generating Service ticket")
+    print(service_ticket)
 
     encryption_obj = AES.new(server_secret_key.hexdigest().encode(), AES.MODE_CBC,
                              server_secret_key.hexdigest()[:16].encode())
